@@ -1,0 +1,85 @@
+const int irSensorPin = 2;    // IR sensor input pin
+const int buzzerPin = 3;      // Buzzer output pin
+const int ledPin = 4;         // LED output pin
+const int trigPin = 5;        // Ultrasound sensor trigger pin
+const int echoPin = 6;        // Ultrasound sensor echo pin
+
+unsigned long eyesClosedTime = 0; // Variable to store the time eyes were closed
+int sleepCount=0;
+void setup() {
+  // Initialize serial communication for debugging (optional)
+  Serial.begin(9600);
+
+  // Initialize the IR sensor pin as input
+  pinMode(irSensorPin, INPUT);
+
+  // Initialize the buzzer, LED, and ultrasound sensor pins
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+}
+
+void loop() {
+  // Read the IR sensor data
+  int irSensorValue = digitalRead(irSensorPin);
+
+  // Read the ultrasound sensor data
+  long duration, distance;
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  distance = duration * 0.0343 / 2;  // Calculate distance in cm
+
+  // Check if eyes are closed or showing signs of drowsiness
+  if (irSensorValue == LOW) {
+    // Eyes are closed
+    if (eyesClosedTime == 0) {
+      // Start the timer if it hasn't been started yet
+      eyesClosedTime = millis();
+    } else {
+      // Check if eyes have been closed for 5 seconds
+      if (millis() - eyesClosedTime >= 5000) {
+        // Eyes have been closed for 5 seconds, trigger alert
+        if (sleepCount >= 2) {
+          triggerAlarm(60000); // Call function to trigger alarm for 1 minute (60000 milliseconds)
+          sleepCount = 0; // Reset sleep count
+        } 
+        else{
+        digitalWrite(buzzerPin, HIGH); // Turn on the buzzer
+        digitalWrite(ledPin, HIGH);    // Turn on the LED
+        Serial.println("Alert: Eyes Closed for 5 seconds");
+        sleepCount++;}
+        // Reset the timer
+        eyesClosedTime = 0;
+      }
+    }
+  } else {
+    // Eyes are open, turn off the buzzer and LED
+    digitalWrite(buzzerPin, LOW);
+    digitalWrite(ledPin, LOW);
+    // Reset the timer
+    eyesClosedTime = 0;
+  }
+   
+  // Check if the driver's head is tilted forward (distance less than 10cm)
+  if (distance < 10) {
+    // Head tilt detected, trigger alert
+    digitalWrite(buzzerPin, HIGH); // Turn on the buzzer
+    digitalWrite(ledPin, HIGH);    // Turn on the LED
+    Serial.println("Alert: Head Tilt Detected");
+  }
+
+  // Add a delay to prevent continuous triggering of the alert
+  delay(100); // Adjust as needed
+}
+  void triggerAlarm(unsigned long duration) {
+  digitalWrite(buzzerPin, HIGH); // Turn on the buzzer
+  digitalWrite(ledPin, HIGH);    // Turn on the LED
+  delay(duration); // Sound the buzzer for the specified duration
+  digitalWrite(buzzerPin, LOW); // Turn off the buzzer
+  digitalWrite(ledPin, LOW);    // Turn off the LED
